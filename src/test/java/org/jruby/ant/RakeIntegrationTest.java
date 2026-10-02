@@ -14,17 +14,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Runs a real build.xml that calls a real Rakefile through the rake-ant gem.
+ * Runs a real build.xml that calls a real Rakefile through the rake-ant gem
+ * that is bundled into the jar (target/classes during the build).
  *
- * Needs the gem's lib directory on RUBYLIB; surefire sets that from
- * -Drake.ant.lib=/path/to/rake-ant/lib, and the test is skipped without it.
+ * rake-ant finds Ant's jars via ANT_HOME or by running `ant -diagnostics`, so
+ * the test is skipped on machines without an Ant install.
  */
 class RakeIntegrationTest {
     @Test
     void antBuildRunsRakeTask(@TempDir Path tmp) throws Exception {
-        String lib = System.getProperty("rake.ant.lib", "");
-        assumeTrue(!lib.isEmpty(), "set -Drake.ant.lib=<rake-ant checkout>/lib to run");
-        assumeTrue(new File(lib, "rake/ant/tasks/raketasks.rb").isFile(), "rake-ant not found in " + lib);
+        assumeTrue(antInstalled(), "needs ANT_HOME or ant on the PATH");
 
         Path marker = tmp.resolve("marker.txt");
         Path rakefile = tmp.resolve("Rakefile");
@@ -44,5 +43,16 @@ class RakeIntegrationTest {
         project.executeTarget("run-rake");
 
         assertEquals("ran from rake via ant\n", new String(Files.readAllBytes(marker), StandardCharsets.UTF_8));
+    }
+
+    private static boolean antInstalled() {
+        String antHome = System.getenv("ANT_HOME");
+        if (antHome != null && new File(antHome).exists()) return true;
+        String path = System.getenv("PATH");
+        if (path == null) return false;
+        for (String dir : path.split(File.pathSeparator)) {
+            if (new File(dir, "ant").canExecute() || new File(dir, "ant.bat").canExecute()) return true;
+        }
+        return false;
     }
 }

@@ -24,19 +24,34 @@ Rakefile). These tasks used to live in JRuby itself as `org.jruby.ant`.
 
 ## Requirements
 
-`jruby-base`/`jruby-complete` and `ant` are `provided`: put them on Ant's classpath yourself.
-The tasks also need:
+`jruby-base`/`jruby-complete` and `ant` are `provided`: put them on Ant's classpath yourself,
+along with JRuby's standard library (for Rake).
 
-* JRuby's standard library (Rake) and the `rake-ant` gem (`jruby -S gem install rake-ant`),
-  loadable from JRuby's gem path or `RUBYLIB`.
-* Ant installed (`ANT_HOME` or `ant` on `PATH`): the rake-ant gem uses it to find Ant's jars.
+The Ruby half, the [rake-ant](https://github.com/jruby/rake-ant) gem, is bundled into the
+jar (its `lib` files sit at the jar root), so there is no separate gem to install. The version
+is `rake-ant.version` in `pom.xml`.
+
+rake-ant finds Ant's jars through `ANT_HOME` or by running `ant -diagnostics`, so Ant must be
+installed (`ANT_HOME` set or `ant` on `PATH`).
 
 ## Building
 
 ```
-./mvnw verify                                     # unit tests against a stub RakeWrapper
-./mvnw verify -Drake.ant.lib=/path/to/rake-ant/lib   # also runs the real Ant -> Rake test
+./mvnw verify
 ```
 
-Releases: `./mvnw -Prelease deploy` attaches sources and javadoc, signs with GPG and uploads to
-the Central Portal (`central` server credentials in `settings.xml`).
+The build downloads the rake-ant gem from rubygems.org through the
+[mavengem](https://github.com/jruby/mavengem-wagon) wagon (`.mvn/extensions.xml`), installs it
+with `gem-maven-plugin` and copies its `lib` into `target/classes`. Tests are unit tests against
+a stub `RakeWrapper` plus an Ant -> Rake integration test (skipped without Ant installed).
+
+## Releasing
+
+Releases use the Maven release plugin. The plugin runs `deploy` with the `release` profile
+(sources and javadoc jars, GPG signing, upload to the Central Portal), so GPG and the `central`
+server credentials must be set up in `settings.xml`:
+
+```
+./mvnw release:prepare
+./mvnw release:perform
+```
