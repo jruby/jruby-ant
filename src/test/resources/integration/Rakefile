@@ -1,0 +1,4 @@
+desc 'Writes the marker file named by the marker.file Java system property'
+task :touch do
+  File.write(java.lang.System.getProperty('marker.file'), "ran from rake via ant\n")
+end

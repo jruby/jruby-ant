@@ -1,7 +1,6 @@
 package org.jruby.ant;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
@@ -26,6 +25,13 @@ public class RakeTaskBase extends Task {
         container.put("$project", getProject());             // set project so jruby ant lib gets it
     }
 
+    /**
+     * The Ruby library that defines <code>RakeWrapper</code>. It ships in the rake-ant gem.
+     */
+    protected String rakeTasksLibrary() {
+        return "rake/ant/tasks/raketasks";
+    }
+
     protected void acquireRakeReference() {
         ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
         try {
@@ -33,9 +39,7 @@ public class RakeTaskBase extends Task {
             System.setProperty("jruby.native.enabled", "false"); // Problem with cl w/ jnr + jffi
             container = new ScriptingContainer();
 
-            // FIXME: This needs to be replaced by something which does not assume CWD
-            container.setLoadPaths(Arrays.asList("lib"));
-            container.runScriptlet("require 'ant/tasks/raketasks'");
+            container.runScriptlet("require '" + rakeTasksLibrary() + "'");
 
             rakeWrapper = container.runScriptlet("RakeWrapper.new");
         } finally {

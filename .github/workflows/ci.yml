@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Java ${{ matrix.java }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['8', '11', '17', '21']
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+      - name: checkout rake-ant (the Ruby half of the tasks)
+        uses: actions/checkout@v6
+        with:
+          repository: jruby/rake-ant
+          path: rake-ant
+      - name: set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: ${{ matrix.java }}
+          cache: 'maven'
+      - name: install Ant (rake-ant shells out to `ant -diagnostics`)
+        run: sudo apt-get install -y --no-install-recommends ant
+      - name: build and test
+        run: ./mvnw -ntp -B verify -Drake.ant.lib="$GITHUB_WORKSPACE/rake-ant/lib"
+
+  # The Central-ready bundle: sources, javadoc and the jar. Signing needs the
+  # release key, so it is skipped here.
+  release-profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+          cache: 'maven'
+      - name: package with release profile
+        run: ./mvnw -ntp -B -Prelease verify -DskipTests -Dgpg.skip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jruby-ant-jars
+          path: target/*.jar
