@@ -26,8 +26,8 @@ jobs:
           distribution: 'zulu'
           java-version: ${{ matrix.java }}
           cache: 'maven'
-      - name: install Ant (rake-ant shells out to `ant -diagnostics`)
-        run: sudo apt-get install -y --no-install-recommends ant
+      - name: set up ant (rake-ant shells out to `ant -diagnostics`)
+        uses: cedx/SetupAnt@v7
       - name: build and test
         run: ./mvnw -ntp -B verify
 
