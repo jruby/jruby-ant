@@ -1,0 +1,7 @@
+<project name="jruby-ant-it" default="run-rake">
+  <taskdef name="rake" classname="org.jruby.ant.Rake"/>
+
+  <target name="run-rake">
+    <rake file="${rakefile}" task="touch"/>
+  </target>
+</project>

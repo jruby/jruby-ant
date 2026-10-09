@@ -5,16 +5,70 @@
 
   <groupId>org.jruby</groupId>
   <artifactId>jruby-ant</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
 
   <name>jruby-ant</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+  <description>Ant tasks (org.jruby.ant.Rake, org.jruby.ant.RakeImport) for running Rake from an Ant build.</description>
+  <url>https://github.com/jruby/jruby-ant</url>
+  <inceptionYear>2007</inceptionYear>
+
+  <organization>
+    <name>JRuby</name>
+    <url>https://www.jruby.org</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>EPL-2.0</name>
+      <url>https://www.eclipse.org/legal/epl-v20.html</url>
+      <distribution>repo</distribution>
+    </license>
+    <license>
+      <name>GPL-2.0</name>
+      <url>https://www.gnu.org/licenses/gpl-2.0-standalone.html</url>
+      <distribution>repo</distribution>
+    </license>
+    <license>
+      <name>LGPL-2.1</name>
+      <url>https://www.gnu.org/licenses/lgpl-2.1-standalone.html</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>headius</id>
+      <name>Charles Oliver Nutter</name>
+    </developer>
+    <developer>
+      <id>enebo</id>
+      <name>Thomas E Enebo</name>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/jruby/jruby-ant.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/jruby/jruby-ant.git</developerConnection>
+    <url>https://github.com/jruby/jruby-ant</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/jruby/jruby-ant/issues</url>
+  </issueManagement>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>8</maven.compiler.source>
-    <maven.compiler.target>8</maven.compiler.target>
+    <project.build.outputTimestamp>2026-10-02T00:00:00Z</project.build.outputTimestamp>
+    <!-- "release 8" also checks against the Java 8 API, unlike source/target -->
+    <maven.compiler.release>8</maven.compiler.release>
+    <ant.version>1.10.18</ant.version>
+    <jruby.version>9.4.15.0</jruby.version>
+    <!-- The Ruby half of the tasks, bundled into the jar -->
+    <rake-ant.version>1.0.6</rake-ant.version>
+    <jruby.plugins.version>3.0.6</jruby.plugins.version>
   </properties>
 
   <distributionManagement>
@@ -51,18 +105,77 @@
     <dependency>
       <groupId>org.apache.ant</groupId>
       <artifactId>ant</artifactId>
-      <version>1.10.18</version>
+      <version>${ant.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.jruby</groupId>
       <artifactId>jruby-base</artifactId>
-      <version>9.4.15.0</version>
+      <version>${jruby.version}</version>
       <scope>provided</scope>
+    </dependency>
+    <!-- the rake-ant gem, bundled into the jar by gem-maven-plugin (see build) -->
+    <dependency>
+      <groupId>rubygems</groupId>
+      <artifactId>rake-ant</artifactId>
+      <version>${rake-ant.version}</version>
+      <type>gem</type>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Rake itself, for RakeIntegrationTest -->
+    <dependency>
+      <groupId>org.jruby</groupId>
+      <artifactId>jruby-stdlib</artifactId>
+      <version>${jruby.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
   <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+        <configuration>
+          <!-- release:prepare/release:perform run the deploy with -Prelease -->
+          <releaseProfiles>release</releaseProfiles>
+          <goals>deploy</goals>
+          <tagNameFormat>@{project.version}</tagNameFormat>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jruby.maven</groupId>
+        <artifactId>gem-maven-plugin</artifactId>
+        <version>${jruby.plugins.version}</version>
+        <executions>
+          <execution>
+            <id>install-rake-ant</id>
+            <phase>initialize</phase>
+            <goals><goal>initialize</goal></goals>
+            <configuration>
+              <includeRubygemsInTestResources>false</includeRubygemsInTestResources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>bundle-rake-ant</id>
+            <phase>process-resources</phase>
+            <goals><goal>copy-resources</goal></goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.build.directory}/rubygems-provided/gems/rake-ant-${rake-ant.version}/lib</directory>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
         <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
@@ -104,7 +217,94 @@
             <publishingServerId>central</publishingServerId>
           </configuration>
         </plugin>
+        <plugin>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>3.3.1</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>3.11.2</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>3.2.7</version>
+        </plugin>
+        <plugin>
+          <artifactId>maven-release-plugin</artifactId>
+          <version>3.1.1</version>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
+
+  <profiles>
+    <!-- rubygems.org as a Maven repository. Only active when building this project (the
+         extension that provides the mavengem: protocol lives in .mvn/extensions.xml), so
+         it is not seen by projects that depend on jruby-ant. -->
+    <profile>
+      <id>mavengem</id>
+      <activation>
+        <file><exists>${basedir}/.mvn/extensions.xml</exists></file>
+      </activation>
+      <repositories>
+        <repository>
+          <id>mavengems</id>
+          <url>mavengem:https://rubygems.org</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>mavengems</id>
+          <url>mavengem:https://rubygems.org</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+    <!-- Everything Maven Central requires: sources, javadoc, GPG signatures, portal upload -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals><goal>jar-no-fork</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals><goal>jar</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals><goal>sign</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <extensions>true</extensions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
